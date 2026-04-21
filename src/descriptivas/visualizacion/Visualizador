@@ -1,1 +1,335 @@
 
+{
+ "cells": [
+  {
+   "metadata": {
+    "ExecuteTime": {
+     "end_time": "2026-04-20T07:42:09.204087100Z",
+     "start_time": "2026-04-20T07:42:08.679261Z"
+    }
+   },
+   "cell_type": "code",
+   "source": [
+    "import pandas as pd\n",
+    "import plotly.express as px\n",
+    "import plotly.io as pio\n",
+    "\n",
+    "# Cargar datos\n",
+    "df = pd.read_csv(r'C:\\Users\\Cami\\Downloads\\Mapas2\\Accidentes.csv', sep=';')\n",
+    "print(df.columns.tolist())"
+   ],
+   "id": "6665ffeab1292191",
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "['Clase de accidente', 'Tipo de accidente', 'Año', 'Hora', 'Hora recodificada', 'Provincia ', 'Cantón', 'Distrito', 'Ruta', 'Kilómetro', 'Rural o urbano', 'Calzada vertical', 'Calzada horizontal', 'Tipo de calzada', 'Tipo de circulación', 'Estado del tiempo', 'Estado de la calzada', 'Región Mideplan', 'Tipo ruta', 'Día ', 'Mes ']\n"
+     ]
+    }
+   ],
+   "execution_count": 7
+  },
+  {
+   "cell_type": "code",
+   "id": "initial_id",
+   "metadata": {
+    "collapsed": true,
+    "ExecuteTime": {
+     "end_time": "2026-04-20T07:42:12.787080200Z",
+     "start_time": "2026-04-20T07:42:11.836702200Z"
+    }
+   },
+   "source": [
+    "\n",
+    "# 1. Agrupamos por Provincia para contar accidentes\n",
+    "df_provincia = df.groupby('Provincia ').size().reset_index(name='Total Accidentes')\n",
+    "\n",
+    "# Nota: Para que este mapa funcione, necesitas un archivo .json con los límites de CR.\n",
+    "# Pero puedes probar la lógica de visualización así:\n",
+    "fig = px.choropleth(df_provincia,\n",
+    "                    locations='Provincia ',\n",
+    "                    color='Total Accidentes',\n",
+    "                    locationmode='country names', # Esto es genérico, lo ideal es el GeoJSON\n",
+    "                    hover_name='Provincia ',\n",
+    "                    title='Distribución de Accidentes por Provincia (2018-2024)',\n",
+    "                    color_continuous_scale='Reds')\n",
+    "fig.show(renderer=\"browser\")"
+   ],
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "C:\\Users\\Cami\\AppData\\Local\\Temp\\ipykernel_10300\\466060064.py:6: DeprecationWarning: The library used by the *country names* `locationmode` option is changing in an upcoming version. Country names in existing plots may not work in the new version. To ensure consistent behavior, consider setting `locationmode` to *ISO-3*.\n",
+      "  fig = px.choropleth(df_provincia,\n"
+     ]
+    }
+   ],
+   "execution_count": 8
+  },
+  {
+   "metadata": {
+    "ExecuteTime": {
+     "end_time": "2026-04-20T07:42:47.511011500Z",
+     "start_time": "2026-04-20T07:42:45.887143500Z"
+    }
+   },
+   "cell_type": "code",
+   "source": [
+    "import pandas as pd\n",
+    "import plotly.express as px\n",
+    "\n",
+    "df = pd.read_csv(r'C:\\Users\\Cami\\Downloads\\Mapas2\\Accidentes.csv', sep=';')\n",
+    "\n",
+    "# Agrupamos para que el gráfico no sea pesado\n",
+    "df_resumen = df.groupby(['Provincia ', 'Cantón', 'Clase de accidente']).size().reset_index(name='Total')\n",
+    "\n",
+    "fig = px.treemap(df_resumen,\n",
+    "                 path=['Provincia ', 'Cantón'],\n",
+    "                 values='Total',\n",
+    "                 color='Clase de accidente',\n",
+    "                 color_discrete_map={'Solo heridos leves': '#2980b9', 'Con muertos o graves': '#c0392b'},\n",
+    "                 title='Jerarquía de Accidentes por Provincia y Cantón')\n",
+    "\n",
+    "fig.show(renderer=\"browser\")"
+   ],
+   "id": "b5f9e4dabbac6880",
+   "outputs": [],
+   "execution_count": 9
+  },
+  {
+   "metadata": {
+    "ExecuteTime": {
+     "end_time": "2026-04-20T07:44:10.831103700Z",
+     "start_time": "2026-04-20T07:43:07.069354600Z"
+    }
+   },
+   "cell_type": "code",
+   "source": [
+    "# Coordenadas aproximadas de las cabeceras de provincia\n",
+    "coords = {\n",
+    "    'San José': [9.9333, -84.0833], 'Alajuela': [10.0167, -84.2167],\n",
+    "    'Cartago': [9.8644, -83.9194], 'Heredia': [10.0024, -84.1165],\n",
+    "    'Guanacaste': [10.6333, -85.4333], 'Puntarenas': [9.9763, -84.8389],\n",
+    "    'Limón': [9.9913, -83.0358]\n",
+    "}\n",
+    "\n",
+    "df_mapa = df.groupby(['Provincia ', 'Clase de accidente']).size().reset_index(name='Total')\n",
+    "df_mapa['lat'] = df_mapa['Provincia '].map(lambda x: coords.get(x.strip(), [0,0])[0])\n",
+    "df_mapa['lon'] = df_mapa['Provincia '].map(lambda x: coords.get(x.strip(), [0,0])[1])\n",
+    "\n",
+    "fig_map = px.scatter_mapbox(df_mapa,\n",
+    "                            lat=\"lat\", lon=\"lon\",\n",
+    "                            size=\"Total\",\n",
+    "                            color=\"Clase de accidente\",\n",
+    "                            hover_name=\"Provincia \",\n",
+    "                            zoom=6.5,\n",
+    "                            mapbox_style=\"open-street-map\",\n",
+    "                            title='Concentración de Accidentes por Provincia')\n",
+    "\n",
+    "fig.show(renderer=\"browser\")"
+   ],
+   "id": "51ee4a1d1e06c1d2",
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "C:\\Users\\Cami\\AppData\\Local\\Temp\\ipykernel_10300\\3006998066.py:13: DeprecationWarning: *scatter_mapbox* is deprecated! Use *scatter_map* instead. Learn more at: https://plotly.com/python/mapbox-to-maplibre/\n",
+      "  fig_map = px.scatter_mapbox(df_mapa,\n"
+     ]
+    }
+   ],
+   "execution_count": 10
+  },
+  {
+   "metadata": {
+    "ExecuteTime": {
+     "end_time": "2026-04-20T16:50:55.141163Z",
+     "start_time": "2026-04-20T16:50:51.210005800Z"
+    }
+   },
+   "cell_type": "code",
+   "source": [
+    "import pandas as pd\n",
+    "import plotly.express as px\n",
+    "import plotly.io as pio\n",
+    "\n",
+    "# Configuración global para abrir en navegador (soluciona el error de conexión)\n",
+    "pio.renderers.default = \"browser\"\n",
+    "\n",
+    "# 1. CARGA Y LIMPIEZA (Se hace solo una vez)\n",
+    "path = r'C:\\Users\\Cami\\Downloads\\Mapas2\\Accidentes.csv'\n",
+    "df = pd.read_csv(path, sep=';')\n",
+    "\n",
+    "# Limpiamos nombres de columnas (quita espacios molestos como 'Provincia ')\n",
+    "df.columns = df.columns.str.strip()\n",
+    "# Limpiamos el contenido de las celdas (por si hay \"San José \" con espacio)\n",
+    "df = df.apply(lambda x: x.str.strip() if x.dtype == \"object\" else x)\n",
+    "\n",
+    "# Agrupamos una sola vez para este gráfico\n",
+    "df_tree = df.groupby(['Provincia', 'Cantón', 'Clase de accidente']).size().reset_index(name='Total')\n",
+    "\n",
+    "fig_tree = px.treemap(df_tree,\n",
+    "                      path=['Provincia', 'Cantón', 'Clase de accidente'],\n",
+    "                      values='Total',\n",
+    "                      color='Clase de accidente',\n",
+    "                      color_discrete_map={'Solo heridos leves': '#2980b9', 'Con muertos o graves': '#c0392b'},\n",
+    "                      title='Análisis Jerárquico: Provincias y Cantones')\n",
+    "fig_tree.show()\n",
+    "\n",
+    "coords = {\n",
+    "    'San José': [9.9333, -84.0833], 'Alajuela': [10.0167, -84.2167],\n",
+    "    'Cartago': [9.8644, -83.9194], 'Heredia': [10.0024, -84.1165],\n",
+    "    'Guanacaste': [10.6333, -85.4333], 'Puntarenas': [9.9763, -84.8389],\n",
+    "    'Limón': [9.9913, -83.0358]\n",
+    "}\n",
+    "\n",
+    "# Agrupamos por provincia y gravedad\n",
+    "df_mapa = df.groupby(['Provincia', 'Clase de accidente']).size().reset_index(name='Total')\n",
+    "\n",
+    "# Mapeo de coordenadas rápido\n",
+    "df_mapa['lat'] = df_mapa['Provincia'].map(lambda x: coords.get(x, [0, 0])[0])\n",
+    "df_mapa['lon'] = df_mapa['Provincia'].map(lambda x: coords.get(x, [0, 0])[1])\n",
+    "\n",
+    "fig_map = px.scatter_mapbox(df_mapa,\n",
+    "                            lat=\"lat\", lon=\"lon\",\n",
+    "                            size=\"Total\",\n",
+    "                            color=\"Clase de accidente\",\n",
+    "                            hover_name=\"Provincia\",\n",
+    "                            hover_data={\"Total\": True, \"lat\": False, \"lon\": False},\n",
+    "                            zoom=6.8,\n",
+    "                            mapbox_style=\"carto-positron\",  # Estilo más limpio\n",
+    "                            title='Concentración de Accidentes por Provincia (2018-2024)')\n",
+    "\n",
+    "fig_map.update_layout(margin={\"r\": 0, \"t\": 40, \"l\": 0, \"b\": 0})\n",
+    "fig_map.show()\n",
+    "\n",
+    "# Este gráfico permite comparar la peligrosidad relativa\n",
+    "fig_bar = px.bar(df_mapa, x=\"Provincia\", y=\"Total\", color=\"Clase de accidente\",\n",
+    "                 title=\"Comparativa de Gravedad por Provincia\",\n",
+    "                 barmode=\"group\",\n",
+    "                 text_auto='.2s')\n",
+    "fig_bar.show()"
+   ],
+   "id": "5eb401ff053855bd",
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "C:\\Users\\Cami\\AppData\\Local\\Temp\\ipykernel_10300\\539551009.py:42: DeprecationWarning: *scatter_mapbox* is deprecated! Use *scatter_map* instead. Learn more at: https://plotly.com/python/mapbox-to-maplibre/\n",
+      "  fig_map = px.scatter_mapbox(df_mapa,\n"
+     ]
+    }
+   ],
+   "execution_count": 11
+  },
+  {
+   "metadata": {
+    "ExecuteTime": {
+     "end_time": "2026-04-20T16:57:24.539699200Z",
+     "start_time": "2026-04-20T16:57:22.372034300Z"
+    }
+   },
+   "cell_type": "code",
+   "source": [
+    "import pandas as pd\n",
+    "import plotly.express as px\n",
+    "import plotly.io as pio\n",
+    "\n",
+    "pio.renderers.default = \"browser\"\n",
+    "\n",
+    "# 1. Carga y Limpieza profunda\n",
+    "path = r'C:\\Users\\Cami\\Downloads\\Mapas2\\Accidentes.csv'\n",
+    "df = pd.read_csv(path, sep=';')\n",
+    "df.columns = df.columns.str.strip()\n",
+    "df = df.apply(lambda x: x.str.strip() if x.dtype == \"object\" else x)\n",
+    "\n",
+    "# 2. Coordenadas base por provincia\n",
+    "coords = {\n",
+    "    'San José': [9.9333, -84.0833], 'Alajuela': [10.0167, -84.2167],\n",
+    "    'Cartago': [9.8644, -83.9194], 'Heredia': [10.0024, -84.1165],\n",
+    "    'Guanacaste': [10.6333, -85.4333], 'Puntarenas': [9.9763, -84.8389],\n",
+    "    'Limón': [9.9913, -83.0358]\n",
+    "}\n",
+    "\n",
+    "# 3. Agrupación por Año, Provincia y Clase (Para el Slider)\n",
+    "df_mapa = df.groupby(['Año', 'Provincia', 'Clase de accidente']).size().reset_index(name='Total')\n",
+    "\n",
+    "# 4. Aplicar coordenadas y Jittering (El truco para que no se traslapen)\n",
+    "def get_coords_with_jitter(row):\n",
+    "    lat, lon = coords.get(row['Provincia'], [0, 0])\n",
+    "    # Si es grave, lo movemos un poquito a la derecha/arriba\n",
+    "    if row['Clase de accidente'] == 'Con muertos o graves':\n",
+    "        return lat + 0.04, lon + 0.04\n",
+    "    # Si es leve, lo movemos un poquito a la izquierda/abajo\n",
+    "    else:\n",
+    "        return lat - 0.04, lon - 0.04\n",
+    "\n",
+    "df_mapa[['lat', 'lon']] = df_mapa.apply(\n",
+    "    lambda row: pd.Series(get_coords_with_jitter(row)), axis=1\n",
+    ")\n",
+    "\n",
+    "# 5. Creación del Mapa Animado y Mejorado\n",
+    "fig_map = px.scatter_mapbox(\n",
+    "    df_mapa,\n",
+    "    lat=\"lat\",\n",
+    "    lon=\"lon\",\n",
+    "    size=\"Total\",\n",
+    "    color=\"Clase de accidente\",\n",
+    "    animation_frame=\"Año\",  # ESTO CREA EL SLIDER\n",
+    "    hover_name=\"Provincia\",\n",
+    "    hover_data={\"Total\": True, \"lat\": False, \"lon\": False, \"Año\": False},\n",
+    "    size_max=40,            # Ajusta el tamaño de las burbujas\n",
+    "    zoom=6.8,\n",
+    "    color_discrete_map={'Solo heridos leves': '#2980b9', 'Con muertos o graves': '#c0392b'},\n",
+    "    mapbox_style=\"carto-positron\",\n",
+    "    title='Evolución de Accidentes en Costa Rica (2018-2024)'\n",
+    ")\n",
+    "\n",
+    "# Ajustes estéticos finales\n",
+    "fig_map.update_layout(\n",
+    "    margin={\"r\":0,\"t\":50,\"l\":0,\"b\":0},\n",
+    "    legend=dict(yanchor=\"top\", y=0.99, xanchor=\"left\", x=0.01)\n",
+    ")\n",
+    "\n",
+    "fig_map.show()"
+   ],
+   "id": "b2259bd683d204cd",
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "C:\\Users\\Cami\\AppData\\Local\\Temp\\ipykernel_10300\\3696231725.py:39: DeprecationWarning: *scatter_mapbox* is deprecated! Use *scatter_map* instead. Learn more at: https://plotly.com/python/mapbox-to-maplibre/\n",
+      "  fig_map = px.scatter_mapbox(\n"
+     ]
+    }
+   ],
+   "execution_count": 12
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 2
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython2",
+   "version": "2.7.6"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}
